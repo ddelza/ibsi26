@@ -375,15 +375,17 @@
   }
 
   /* ───────── 뷰: 학교별 ───────── */
+  /** 학교별 목록에서 '양평고등학교'와 '양평고'를 한 학교로 묶기 */
+  const shortName = s => String(s).trim().replace(/\s+/g, ' ').replace(/고등학교$/, '고');
   function schoolGroups() {
     const bySchool = {}; const unknown = {}; const late = {};
     S.students.forEach(st => {
       const c = choicesOf(st);
       c.early.forEach(x => {
         if (x.school) (bySchool[x.school.id] = bySchool[x.school.id] || new Set()).add(st.id);
-        else if (!x.undecided && x.raw) (unknown[x.raw] = unknown[x.raw] || new Set()).add(st.id);
+        else if (!x.undecided && x.raw) { const k = shortName(x.raw); (unknown[k] = unknown[k] || new Set()).add(st.id); }
       });
-      c.late.forEach(x => { if (!x.undecided) (late[x.raw] = late[x.raw] || new Set()).add(st.id); });
+      c.late.forEach(x => { if (!x.undecided) { const k = shortName(x.raw); (late[k] = late[k] || new Set()).add(st.id); } });
     });
     return { bySchool, unknown, late };
   }

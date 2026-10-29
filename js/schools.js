@@ -520,8 +520,7 @@ IB.SCHOOLS = [
     apply: '원서 접수 완료',
     tracks: [{ name: '예술고 전형', choices: '', method: '실기고사' }],
     dates: [
-      { date: '2026-10-28', time: '13:00', label: '실기고사(실용무용)', kind: 'exam' },
-      { date: '2026-10-29', label: '실기고사(영상제작 크리에이터)', kind: 'exam' },
+      { date: '2026-10-28', end: '2026-10-29', label: '실기고사(실용무용 10/28 13:00, 영상제작 10/29 개인별)', kind: 'exam' },
       { date: '2026-11-04', time: '15:00', label: '합격 발표', kind: 'result' },
       { date: '2026-11-05', end: '2026-11-12', label: '합격 시 등록 확인(홈페이지)', kind: 'etc' }
     ],
