@@ -232,7 +232,7 @@
   }
   function docsLine(sc, track) {
     // 경기는 원서가 온라인이라 생략, 서울·타 지역은 수기 원서(중학교장 직인)가 핵심 서류라 표시
-    const docs = (sc.docs || []).filter(x => x.id !== 'app' || sc.area !== 'gg').filter(trackFilter(track));
+    const docs = (sc.docs || []).filter(x => x.id !== 'app' || sc.area !== 'gg' || /유웨이/.test(x.name)).filter(trackFilter(track));
     if (!docs.length) return '<span class="muted">원서 외 추가 서류 없음</span>';
     return docs.map(x => '<span class="doc' + (x.form ? ' form' : '') + '" title="' + esc((x.who ? x.who + ' · ' : '') + (x.how || '')) + '">' + esc(x.name) + '</span>').join('');
   }
