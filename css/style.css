@@ -58,6 +58,8 @@ h2 .muted { font-size: 14px; margin-left: 6px; }
 .chip.sm { padding: 4px 12px; font-size: 13px; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip:hover { text-decoration: none; }
+.ban-h { font-size: 16px; margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--line); }
+.ban-h:first-of-type { margin-top: 4px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 6px 0 14px; }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .toolbar .filters { margin: 0; }

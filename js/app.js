@@ -16,7 +16,7 @@
     pw: store.get('pw', ''), by: store.get('by', ''),
     students: [], progress: {}, loadedAt: 0,
     showChecks: store.get('showChecks', false),
-    showPast: false, filter: store.get('filter', 'all'), schedBan: 'all', statusBan: store.get('ban', 1)
+    showPast: false, filter: 'all', schedBan: 'all', statusBan: store.get('ban', 1)
   };
 
   /* ───────── 학교 매칭 ───────── */
@@ -347,7 +347,7 @@
       card.querySelectorAll('input[data-state]').forEach(x => { x.checked = x.dataset.state === name; x.parentNode.classList.toggle('on', x.checked); });
       document.querySelectorAll('[data-filter^="st:"]').forEach(b => {
         const n = b.dataset.filter.slice(3);
-        b.textContent = n + ' ' + S.students.filter(s => s.ban === st.ban && stateOf(s) === n).length;
+        b.textContent = n + ' ' + S.students.filter(s => (S.curBan === 'all' || s.ban === st.ban) && stateOf(s) === n).length;
       });
     };
     const apply = name => {
@@ -393,16 +393,17 @@
   function bindToolbar() {
     const t = $('#tglChecks');
     if (t) t.onchange = () => { S.showChecks = t.checked; store.set('showChecks', S.showChecks); render(); };
-    document.querySelectorAll('[data-filter]').forEach(b => { b.onclick = () => { S.filter = b.dataset.filter; store.set('filter', S.filter); render(); }; });
+    document.querySelectorAll('[data-filter]').forEach(b => { b.onclick = () => { S.filter = b.dataset.filter; render(); }; });
   }
 
   /* ───────── 뷰: 반별 ───────── */
   function viewClass(arg) {
     const bans = [...new Set(S.students.map(s => s.ban))].sort((a, b) => a - b);
-    let ban = parseInt(arg, 10) || store.get('ban', bans[0] || 1);
-    if (!bans.includes(ban)) ban = bans[0];
+    let ban = arg === 'all' ? 'all' : (parseInt(arg, 10) || store.get('ban', bans[0] || 1));
+    if (ban !== 'all' && !bans.includes(ban)) ban = bans[0];
     store.set('ban', ban);
-    const list = S.students.filter(s => s.ban === ban);
+    S.curBan = ban;
+    const list = S.students.filter(s => ban === 'all' || s.ban === ban);
     const cnt = { early: 0, late: 0, none: 0 };
     list.forEach(s => cnt[category(s)]++);
     const shown = list.filter(s => S.filter === 'all' || (S.filter.indexOf('st:') === 0 ? stateOf(s) === S.filter.slice(3) : category(s) === S.filter));
@@ -410,9 +411,13 @@
       .map(f => '<button class="chip sm' + (S.filter === f[0] ? ' on' : '') + '" data-filter="' + f[0] + '">' + f[1] + '</button>').join('') +
       '<span class="fsep"></span>' +
       STATES.map(([n, k]) => '<button class="chip sm sf-' + k + (S.filter === 'st:' + n ? ' on' : '') + '" data-filter="st:' + n + '">' + n + ' ' + list.filter(s => stateOf(s) === n).length + '</button>').join('');
-    return '<div class="bans">' + bans.map(b => '<a class="chip big' + (b === ban ? ' on' : '') + '" href="#class=' + b + '">3학년 ' + b + '반</a>').join('') + '</div>' +
+    // 전체 반: 반별로 제목을 달아 이어서 보여 줌
+    const cards = ban === 'all'
+      ? bans.map(b => { const g = shown.filter(s => s.ban === b); return g.length ? '<h3 class="ban-h">3학년 ' + b + '반 <span class="muted">' + g.length + '명</span></h3><div class="grid">' + g.map(s => cardHtml(s, { showBan: true })).join('') + '</div>' : ''; }).join('')
+      : '<div class="grid">' + shown.map(s => cardHtml(s)).join('') + '</div>';
+    return '<div class="bans"><a class="chip big' + (ban === 'all' ? ' on' : '') + '" href="#class=all">전체 반</a>' + bans.map(b => '<a class="chip big' + (b === ban ? ' on' : '') + '" href="#class=' + b + '">3학년 ' + b + '반</a>').join('') + '</div>' +
       toolbarHtml('<div class="filters">' + filters + '</div>') +
-      (shown.length ? '<div class="grid">' + shown.map(s => cardHtml(s)).join('') + '</div>' : '<p class="empty">해당하는 학생이 없습니다.</p>');
+      (shown.length ? cards : '<p class="empty">해당하는 학생이 없습니다.</p>');
   }
 
   /* ───────── 뷰: 학교별 ───────── */
