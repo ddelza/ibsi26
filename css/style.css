@@ -70,6 +70,22 @@ h2 .muted { font-size: 14px; margin-left: 6px; }
 .card.cat-early { border-top-color: var(--voc); }
 .card.cat-late { border-top-color: #adb5bd; }
 .card.cat-none { border-top-color: var(--warn); }
+/* 지망 상태: 고민중=노랑, 지망확정=초록, 입시완료=파랑 */
+.card.st-think { border-top-color: #f59f00; background: #fffbe6; border-color: #ffe066; }
+.card.st-fix { border-top-color: #2f9e44; background: #f1fbf3; border-color: #8ce99a; }
+.card.st-done { border-top-color: #1c7ed6; background: #eef6ff; border-color: #a5d8ff; }
+.states { display: flex; gap: 6px; flex-wrap: wrap; }
+.stb { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px 11px 3px 8px; cursor: pointer; background: #fff; color: var(--muted); user-select: none; }
+.stb input { width: 15px; height: 15px; margin: 0; cursor: pointer; }
+.stb.s-think input { accent-color: #f59f00; } .stb.s-fix input { accent-color: #2f9e44; } .stb.s-done input { accent-color: #1c7ed6; }
+.stb.s-think.on { background: #fff3bf; border-color: #f59f00; color: #8a5a00; }
+.stb.s-fix.on { background: #d3f9d8; border-color: #2f9e44; color: #1b6e2f; }
+.stb.s-done.on { background: #d0ebff; border-color: #1c7ed6; color: #155a9c; }
+.fsep { width: 1px; background: var(--line); margin: 2px 4px; }
+.chip.sf-think.on { background: #f59f00; border-color: #f59f00; }
+.chip.sf-fix.on { background: #2f9e44; border-color: #2f9e44; }
+.chip.sf-done.on { background: #1c7ed6; border-color: #1c7ed6; }
+.pill.sp-think { background: #fff3bf; color: #8a5a00; } .pill.sp-fix { background: #d3f9d8; color: #1b6e2f; } .pill.sp-done { background: #d0ebff; color: #155a9c; }
 .c-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .c-h .num { background: var(--late-bg); border-radius: 6px; padding: 1px 7px; font-weight: 700; font-size: 13px; color: var(--muted); }
 .c-h .nm { font-size: 17px; }

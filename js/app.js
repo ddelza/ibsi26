@@ -86,6 +86,10 @@
   const TRACKS = ['', '특별전형', '일반전형', '기타(특례 등)'];
   const STATUSES = ['', '준비 중', '원서 접수 완료', '1차 합격', '1차 불합격', '최종 합격', '불합격', '합격 포기'];
   const statusClass = s => /최종 합격|^1차 합격/.test(s) ? 'ok' : /불합격|포기/.test(s) ? 'bad' : s ? 'mid' : '';
+  /* 지망 상태(카드 색) — 체크 기록에 'state:이름' 키로 저장, 셋 중 하나만 */
+  const STATES = [['고민중', 'think'], ['지망확정', 'fix'], ['입시완료', 'done']];
+  const stateOf = st => { const c = prog(st).checks || {}; const s = STATES.find(x => c['state:' + x[0]]); return s ? s[0] : ''; };
+  const stateCls = name => { const s = STATES.find(x => x[0] === name); return s ? 'st-' + s[1] : ''; };
 
   function trackFilter(track) {
     if (track === '일반전형') return x => /일반|공통/.test(x.track || '공통') || !/특별|미래인재|상일인재|디자인인재/.test(x.track || '');
@@ -311,12 +315,14 @@
         checklistOf(st).map(i => '<label class="ck"><input type="checkbox" data-ck="' + esc(i.key) + '" data-id="' + st.id + '"' + (c[i.key] ? ' checked' : '') + '><span><span class="who">' + esc(i.who || '') + '</span> ' + esc(i.text) + (i.school ? ' <span class="muted">· ' + esc(i.school) + '</span>' : '') + (i.sub ? '<small>' + esc(i.sub) + '</small>' : '') + '</span></label>').join('') +
         '</section>';
     }
-    return '<article class="card cat-' + cat + '" data-id="' + st.id + '">' +
+    const cur = stateOf(st);
+    const states = '<div class="states">' + STATES.map(([n, k]) => '<label class="stb s-' + k + (cur === n ? ' on' : '') + '"><input type="checkbox" data-state="' + n + '" data-id="' + st.id + '"' + (cur === n ? ' checked' : '') + '>' + n + '</label>').join('') + '</div>';
+    return '<article class="card cat-' + cat + ' ' + stateCls(cur) + '" data-id="' + st.id + '">' +
       '<header class="c-h"><span class="num">' + (opt.showBan ? st.ban + '-' : '') + st.num + '</span><b class="nm">' + esc(st.name) + '</b>' +
       (p.track ? '<span class="pill">' + esc(p.track) + '</span>' : '') +
       (p.status ? '<span class="pill st ' + statusClass(p.status) + '">' + esc(p.status) + '</span>' : '') +
       (!S.showChecks && cs.total > 1 ? '<span class="pill ck-mini' + (cs.done === cs.total ? ' ok' : '') + '" title="준비 체크">✓ ' + cs.done + '/' + cs.total + '</span>' : '') +
-      '<button class="edit" data-edit="' + st.id + '" title="지망학교·전형·상태 수정">✏️ 수정</button></header>' +
+      '<button class="edit" data-edit="' + st.id + '" title="지망학교·전형·상태 수정">✏️ 수정</button></header>' + states +
       (nx ? '<div class="next' + (dday(nx.date) === 'D-day' ? ' today' : '') + '">⏰ ' + esc(range(nx)) + ' ' + esc(nx.label) + (nx.school ? ' <span class="muted">' + esc(nx.school) + '</span>' : '') + ' <b>' + dday(nx.date) + '</b></div>' : '') +
       '<div class="choices">' + choiceRows(st, opt) + '</div>' +
       (st.memo ? '<div class="memo">📝 ' + esc(st.memo) + '</div>' : '') +
@@ -326,6 +332,39 @@
   function bindCards(root) {
     root.querySelectorAll('[data-edit]').forEach(b => { b.onclick = () => openEdit(b.dataset.edit); });
     root.querySelectorAll('input[data-ck]').forEach(cb => { cb.onchange = () => toggleCheck(cb); });
+    root.querySelectorAll('input[data-state]').forEach(cb => { cb.onchange = () => setState(cb); });
+  }
+
+  /** 지망 상태 체크: 하나를 켜면 나머지는 꺼짐, 켜진 걸 다시 누르면 해제 */
+  async function setState(cb) {
+    const st = S.students.find(s => s.id === cb.dataset.id);
+    const card = cb.closest('.card');
+    const before = stateOf(st);
+    const next = cb.checked ? cb.dataset.state : '';
+    const paint = name => {
+      card.classList.remove('st-think', 'st-fix', 'st-done');
+      if (name) card.classList.add(stateCls(name));
+      card.querySelectorAll('input[data-state]').forEach(x => { x.checked = x.dataset.state === name; x.parentNode.classList.toggle('on', x.checked); });
+      document.querySelectorAll('[data-filter^="st:"]').forEach(b => {
+        const n = b.dataset.filter.slice(3);
+        b.textContent = n + ' ' + S.students.filter(s => s.ban === st.ban && stateOf(s) === n).length;
+      });
+    };
+    const apply = name => {
+      const p = S.progress[st.id] || (S.progress[st.id] = { track: '', status: '', checks: {} });
+      p.checks = p.checks || {};
+      STATES.forEach(([n]) => { if (n === name) p.checks['state:' + n] = new Date().toISOString().slice(0, 10); else delete p.checks['state:' + n]; });
+    };
+    apply(next); paint(next);
+    const patch = {};
+    STATES.forEach(([n]) => { patch['state:' + n] = n === next; });
+    try {
+      const r = await api('saveProgress', { id: st.id, name: st.name, ban: st.ban, num: st.num, by: S.by, patch: { checks: patch } });
+      S.progress[st.id] = r.progress;
+    } catch (err) {
+      apply(before); paint(before);
+      toast('저장하지 못했습니다: ' + err.message, true);
+    }
   }
 
   async function toggleCheck(cb) {
@@ -366,9 +405,11 @@
     const list = S.students.filter(s => s.ban === ban);
     const cnt = { early: 0, late: 0, none: 0 };
     list.forEach(s => cnt[category(s)]++);
-    const shown = list.filter(s => S.filter === 'all' || category(s) === S.filter);
+    const shown = list.filter(s => S.filter === 'all' || (S.filter.indexOf('st:') === 0 ? stateOf(s) === S.filter.slice(3) : category(s) === S.filter));
     const filters = [['all', '전체 ' + list.length], ['early', '전기 지망 ' + cnt.early], ['late', '후기만 ' + cnt.late], ['none', '미정 ' + cnt.none]]
-      .map(f => '<button class="chip sm' + (S.filter === f[0] ? ' on' : '') + '" data-filter="' + f[0] + '">' + f[1] + '</button>').join('');
+      .map(f => '<button class="chip sm' + (S.filter === f[0] ? ' on' : '') + '" data-filter="' + f[0] + '">' + f[1] + '</button>').join('') +
+      '<span class="fsep"></span>' +
+      STATES.map(([n, k]) => '<button class="chip sm sf-' + k + (S.filter === 'st:' + n ? ' on' : '') + '" data-filter="st:' + n + '">' + n + ' ' + list.filter(s => stateOf(s) === n).length + '</button>').join('');
     return '<div class="bans">' + bans.map(b => '<a class="chip big' + (b === ban ? ' on' : '') + '" href="#class=' + b + '">3학년 ' + b + '반</a>').join('') + '</div>' +
       toolbarHtml('<div class="filters">' + filters + '</div>') +
       (shown.length ? '<div class="grid">' + shown.map(s => cardHtml(s)).join('') + '</div>' : '<p class="empty">해당하는 학생이 없습니다.</p>');
@@ -493,11 +534,11 @@
     return '<h2>📊 진행 현황 <span class="muted">전기 지망 학생 · 행을 누르면 수정</span></h2>' +
       '<div class="filters">' + [['all', '전체 반']].concat(bans.map(b => [String(b), b + '반'])).map(f => '<button class="chip sm' + (String(ban) === f[0] ? ' on' : '') + '" data-stban="' + f[0] + '">' + f[1] + '</button>').join('') + '</div>' +
       '<div class="stat-sum">' + Object.keys(cnt).map(k => '<span class="pill st ' + statusClass(k) + '">' + esc(k) + ' ' + cnt[k] + '</span>').join('') + '</div>' +
-      '<div class="tblwrap"><table class="stat"><thead><tr><th>반-번</th><th>이름</th><th>전기 지망</th><th>전형</th><th>상태</th><th>준비</th><th>다음 일정</th></tr></thead><tbody>' +
+      '<div class="tblwrap"><table class="stat"><thead><tr><th>반-번</th><th>이름</th><th>전기 지망</th><th>지망 상태</th><th>전형</th><th>상태</th><th>준비</th><th>다음 일정</th></tr></thead><tbody>' +
       list.map(s => {
         const p = prog(s); const cs = checkStat(s); const nx = nextEventOf(s);
         const sch = choicesOf(s).early.map(x => esc(x.raw) + (x.dept ? ' <span class="muted">' + esc(x.dept) + '</span>' : '')).join('<br>');
-        return '<tr data-edit="' + s.id + '"><td>' + s.ban + '-' + s.num + '</td><td>' + esc(s.name) + '</td><td>' + sch + '</td><td>' + esc(p.track || '—') + '</td><td>' + (p.status ? '<span class="pill st ' + statusClass(p.status) + '">' + esc(p.status) + '</span>' : '—') + '</td><td>' + cs.done + '/' + cs.total + '</td><td>' + (nx ? esc(mdShort(nx.date)) + ' ' + esc(nx.label) : '') + '</td></tr>';
+        return '<tr data-edit="' + s.id + '"><td>' + s.ban + '-' + s.num + '</td><td>' + esc(s.name) + '</td><td>' + sch + '</td><td>' + (stateOf(s) ? '<span class="pill sp-' + stateCls(stateOf(s)).slice(3) + '">' + stateOf(s) + '</span>' : '—') + '</td><td>' + esc(p.track || '—') + '</td><td>' + (p.status ? '<span class="pill st ' + statusClass(p.status) + '">' + esc(p.status) + '</span>' : '—') + '</td><td>' + cs.done + '/' + cs.total + '</td><td>' + (nx ? esc(mdShort(nx.date)) + ' ' + esc(nx.label) : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
 
