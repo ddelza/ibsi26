@@ -87,7 +87,7 @@
   const STATUSES = ['', '준비 중', '원서 접수 완료', '1차 합격', '1차 불합격', '최종 합격', '불합격', '합격 포기'];
   const statusClass = s => /최종 합격|^1차 합격/.test(s) ? 'ok' : /불합격|포기/.test(s) ? 'bad' : s ? 'mid' : '';
   /* 지망 상태(카드 색) — 체크 기록에 'state:이름' 키로 저장, 셋 중 하나만 */
-  const STATES = [['고민중', 'think'], ['지망확정', 'fix'], ['입시완료', 'done']];
+  const STATES = [['고민중', 'think'], ['지망확정', 'fix'], ['원서제출완료', 'sub'], ['입시완료', 'done']];
   const stateOf = st => { const c = prog(st).checks || {}; const s = STATES.find(x => c['state:' + x[0]]); return s ? s[0] : ''; };
   const stateCls = name => { const s = STATES.find(x => x[0] === name); return s ? 'st-' + s[1] : ''; };
 
@@ -342,7 +342,7 @@
     const before = stateOf(st);
     const next = cb.checked ? cb.dataset.state : '';
     const paint = name => {
-      card.classList.remove('st-think', 'st-fix', 'st-done');
+      card.classList.remove('st-think', 'st-fix', 'st-sub', 'st-done');
       if (name) card.classList.add(stateCls(name));
       card.querySelectorAll('input[data-state]').forEach(x => { x.checked = x.dataset.state === name; x.parentNode.classList.toggle('on', x.checked); });
       document.querySelectorAll('[data-filter^="st:"]').forEach(b => {
