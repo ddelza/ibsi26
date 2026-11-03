@@ -563,19 +563,24 @@
     const p = prog(st);
     const c = choicesOf(st);
     const rows = c.early.length ? c.early.map(x => ({ school: x.raw, dept: x.dept })) : [{ school: '', dept: '' }];
+    const lateRows = c.late.length ? c.late.map(x => x.raw) : [''];
+    // 후기 자동완성: 흔한 일반고 + 지금까지 학생들이 적어 낸 후기 학교
+    const lateNames = [...new Set(IB.KNOWN_LATE.concat(['광주중앙고']).concat(S.students.flatMap(s => splitList(s.late).map(shortName))))];
     const dlg = $('#dlg');
     const rowHtml = (r, i) => '<div class="er" data-i="' + i + '"><input class="in-school" list="dl-schools" placeholder="전기 학교" value="' + esc(r.school) + '"><input class="in-dept" placeholder="학과" value="' + esc(r.dept) + '"><button type="button" class="x" title="삭제">✕</button></div>';
+    const lateRowHtml = v => '<div class="lr"><input class="in-late" list="dl-late" placeholder="후기 학교 (예: 초월고)" value="' + esc(v) + '"><button type="button" class="x" title="삭제">✕</button></div>';
     dlg.innerHTML = '<form method="dialog" class="dlg-f">' +
       '<h3>' + st.ban + '-' + st.num + ' ' + esc(st.name) + ' <span class="muted">지망·진행 수정</span></h3>' +
       '<label class="fl">전기 지망 <span class="muted">(학교를 고르면 학과 목록이 나옵니다)</span></label><div id="erows">' + rows.map(rowHtml).join('') + '</div>' +
       '<button type="button" class="linkbtn" id="addRow">＋ 전기 학교 추가</button>' +
-      '<label class="fl">후기 지망</label><input id="in-late" list="dl-late" value="' + esc(st.late) + '" placeholder="예: 초월고">' +
+      '<label class="fl">후기 지망 <span class="muted">(여러 학교 가능)</span></label><div id="lrows">' + lateRows.map(lateRowHtml).join('') + '</div>' +
+      '<button type="button" class="linkbtn" id="addLate">＋ 후기 학교 추가</button>' +
       '<label class="fl">메모 <span class="muted">(시트 Q열 — 상담 내용 등)</span></label><textarea id="in-memo" rows="2">' + esc(st.memo) + '</textarea>' +
       '<div class="two"><div><label class="fl">전형</label><select id="in-track">' + TRACKS.map(t => '<option' + (t === p.track ? ' selected' : '') + ' value="' + esc(t) + '">' + (t || '미정') + '</option>').join('') + '</select></div>' +
       '<div><label class="fl">상태</label><select id="in-status">' + STATUSES.map(t => '<option' + (t === p.status ? ' selected' : '') + ' value="' + esc(t) + '">' + (t || '—') + '</option>').join('') + '</select></div></div>' +
       (st.survey && st.survey.school ? '<p class="muted small">8월 설문 원문: ' + esc(st.survey.school) + (st.survey.dept ? ' / ' + esc(st.survey.dept) : '') + (st.survey.at ? ' (' + esc(st.survey.at) + ')' : '') + '</p>' : '') +
       '<datalist id="dl-schools">' + allSchoolNames().map(n => '<option value="' + esc(n) + '">').join('') + '<option value="고민중"></datalist>' +
-      '<datalist id="dl-late">' + IB.KNOWN_LATE.map(n => '<option value="' + esc(n) + '">').join('') + '<option value="광주중앙고"></datalist>' +
+      '<datalist id="dl-late">' + lateNames.map(n => '<option value="' + esc(n) + '">').join('') + '<option value="고민중"></datalist>' +
       '<datalist id="dl-dept"></datalist>' +
       '<div class="dlg-btns"><button type="button" class="btn ghost" id="dlgCancel">취소</button><button type="button" class="btn" id="dlgSave">저장</button></div></form>';
     const wrap = $('#erows');
@@ -595,6 +600,14 @@
     const addRow = r => { const div = document.createElement('div'); div.innerHTML = rowHtml(r, wrap.children.length); const el = div.firstChild; wrap.appendChild(el); bindRow(el); };
     [...wrap.children].forEach(bindRow);
     $('#addRow').onclick = () => addRow({ school: '', dept: '' });
+    const lwrap = $('#lrows');
+    const bindLate = el => {
+      el.querySelector('.x').onclick = () => { el.remove(); if (!lwrap.children.length) addLate(''); };
+      el.querySelector('.in-late').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addLate(''); } });
+    };
+    const addLate = v => { const div = document.createElement('div'); div.innerHTML = lateRowHtml(v); const el = div.firstChild; lwrap.appendChild(el); bindLate(el); el.querySelector('.in-late').focus(); };
+    [...lwrap.children].forEach(bindLate);
+    $('#addLate').onclick = () => addLate('');
     $('#dlgCancel').onclick = () => dlg.close();
     $('#dlgSave').onclick = () => saveEdit(st, dlg);
     dlg.showModal();
@@ -605,9 +618,13 @@
     const early = rows.map(r => r.s).filter(Boolean).join(', ');
     const depts = rows.map(r => r.d);
     const dept = depts.some(Boolean) ? (rows.length > 1 ? depts.join(', ') : depts[0]) : '';
-    const fields = { early, dept, late: $('#in-late').value.trim(), memo: $('#in-memo').value.trim() };
+    const late = [...dlg.querySelectorAll('.in-late')].map(el => el.value.trim()).filter(Boolean).join(', ');
+    const fields = { early, dept, late, memo: $('#in-memo').value.trim() };
+    // 전기·후기는 구분 기호(쉼표 뒤 공백 등)만 다르면 바뀐 것으로 보지 않음
+    const listKey = v => splitList(v).join('|');
+    const same = (k, a, b) => (k === 'early' || k === 'late') ? listKey(a) === listKey(b) : a === b;
     const changed = {}; const prev = {};
-    Object.keys(fields).forEach(k => { if (fields[k] !== (st[k] || '').trim()) { changed[k] = fields[k]; prev[k] = st[k] || ''; } });
+    Object.keys(fields).forEach(k => { if (!same(k, fields[k], (st[k] || '').trim())) { changed[k] = fields[k]; prev[k] = st[k] || ''; } });
     const p = prog(st);
     const patch = {};
     const tr = $('#in-track').value, stt = $('#in-status').value;

@@ -211,6 +211,8 @@ dialog::backdrop { background: rgba(20,24,40,.35); }
 .dlg-f { padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; max-height: 90vh; overflow-y: auto; }
 .dlg-f h3 { margin: 0 0 4px; }
 .er { display: grid; grid-template-columns: 1.3fr 1fr 34px; gap: 6px; margin-bottom: 6px; }
+.lr { display: grid; grid-template-columns: 1fr 34px; gap: 6px; margin-bottom: 6px; }
+.lr .x { border: 1px solid var(--line); background: #fff; border-radius: 8px; cursor: pointer; color: var(--muted); }
 .er .x { border: 1px solid var(--line); background: #fff; border-radius: 8px; cursor: pointer; color: var(--muted); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
